@@ -48,14 +48,14 @@ FROM python:3.7-alpine as nipyapi-builder
 RUN mkdir /workdir
 WORKDIR /workdir
 RUN mkdir /install
-ENV PYTHONPATH /install/lib/python3.7/site-packages
+ENV PYTHONPATH /install
 RUN apk update && apk upgrade 
 RUN apk add gcc build-base linux-headers ca-certificates python3-dev libffi-dev libressl-dev libxslt-dev git
-RUN wget https://raw.githubusercontent.com/Chaffelson/nipyapi/master/requirements.txt \
-    && cat requirements.txt | grep -v docker | grep -v requests > minimal_requirements.txt
-RUN pip install --install-option="--prefix=/install" -r minimal_requirements.txt
-RUN pip install --upgrade --install-option="--prefix=/install" git+https://github.com/Chaffelson/nipyapi.git@master#egg=nipyapi
+RUN wget https://raw.githubusercontent.com/Chaffelson/nipyapi/master/requirements.txt
+RUN pip install --target=/install -r requirements.txt
+RUN pip install --upgrade --target=/install git+https://github.com/Chaffelson/nipyapi.git@master#egg=nipyapi
 FROM flowops-base
-COPY --from=nipyapi-builder /install /usr/local
+RUN mkdir -p /usr/local/lib/python3.7/site-packages
+COPY --from=nipyapi-builder /install /usr/local/lib/python3.7/site-packages
 
 ENTRYPOINT ["/bin/bash"]
