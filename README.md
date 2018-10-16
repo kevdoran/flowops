@@ -8,7 +8,7 @@ Automated, repeatable tasks for [Apache NiFi](https://nifi.apache.org) data flow
 
 The FlowOps Docker image comes with useful tools for automating Apache NiFi data flow operations, such as the [Apache NiFi Toolkit CLI](https://github.com/apache/nifi/tree/master/nifi-toolkit/nifi-toolkit-cli) and [NiPyAPI](https://github.com/Chaffelson/nipyapi)
 
-Pull from Dockerhub:
+Pull from [Dockerhub](https://hub.docker.com/r/kevdoran/flowops/):
 
     docker pull kevdoran/flowops:latest
 
