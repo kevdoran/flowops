@@ -1,0 +1,61 @@
+#!/bin/bash
+
+#
+# This bash script will create a bucket in NiFi Registry after
+# waiting for the Registry REST API to become available.
+#
+# Usage:
+#    create-registry-bucket
+#
+# The following environment variables are also recognized:
+#    REGISTRY_URL          The URL of the Registry instance, e.g., http://registry:18080
+#    REGISTRY_BUCKET_NAME  The name of the bucket that is created in the Registry instance
+#    DEBUG                 Set to any non-zero length value to enable debug output. Unset to disable.
+#
+# Default values (in absence of arguments or environment variables):
+#    Registry URL:  http://registry:18080
+#    Bucket Name:   Default
+#
+
+# Enable DEBUG output if enabled
+[ -n "$DEBUG" ] && set -x
+
+# NiFi Toolkit /bin dir expected to be on PATH
+toolkit_cli='cli.sh'
+
+# Look for Registry URL as 1st arg, then REGISTRY_URL env var, then default value
+# [ -n $1 ] && registryUrl=$1
+[[ -z "$registryUrl" && -n "$REGISTRY_URL" ]] && registryUrl="$REGISTRY_URL"
+[ -z "$registryUrl" ] && registryUrl=http://registry:18080
+
+# Look for bucket name as 2nd arg, then REGISTRY_BUCKET_NAME env var, then default value
+# [ -n $2 ] && bucketName=$2
+[[ -z "$bucketName" && -n "$REGISTRY_BUCKET_NAME" ]] && bucketName="$REGISTRY_BUCKET_NAME"
+[ -z "$bucketName" ] && bucketName="Default"
+
+# Wait for Registry
+[ -n "$registryUrl" ] && hostPort=$(parse-uri ${registryUrl} | awk -F '[ ]' '{print $4 ":" $5}')
+echo "Waiting for Registry to listen on '${hostPort}' to create bucket"
+[ -n "$hostPort" ] && wait-for-it.sh "$hostPort" --timeout=0
+
+# Once Registry is up, create the bucket
+if [ $? ]; then
+    echo "Registry is up. Waiting a bit longer to ensure application is ready..."
+    sleep 5
+
+    echo "Using Toolkit CLI to check for existing bucket named '${bucketName}' in Registry..."
+    existing_bucket_id=$(${toolkit_cli} registry list-buckets --baseUrl ${registryUrl} -ot json | jq -r --arg NAME "$bucketName" '.[] | select(.name==$NAME) | .identifier')
+    if [[ -z ${existing_bucket_id// } ]]; then
+        echo "No existing bucket named '${bucketName}' was found in Registry."
+        echo "Using Toolkit CLI to create bucket in Registry..."
+        cli_cmd="${toolkit_cli} registry create-bucket --baseUrl ${registryUrl} --bucketName ${bucketName}"
+        echo "${cli_cmd}"
+        registry_bucket_id=$(${cli_cmd})
+        registry_bucket_id=$( echo "${registry_bucket_id}" | grep -v "JAVA_HOME" )
+        echo "Created Registry bucket '${bucketName}' with id=${registry_bucket_id}"
+    else
+        registry_bucket_id=$existing_bucket_id
+        echo "Registry bucket '${bucketName}' found with id=${registry_bucket_id}"
+    fi
+    export registry_bucket_id
+fi

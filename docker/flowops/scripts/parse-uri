@@ -1,0 +1,70 @@
+#!/bin/bash
+
+#
+# This bash script will parse the parts of the URI input
+# and output the parts as space-separated values to stdout
+#
+# Usage:
+#    parse-uri <URI>
+#
+# Output:
+#    scheme authority user host port path rel_path query fragment
+#
+# Example:
+#    
+#    > parse-uri "http://user@example.com:8080/test?a=1&b=2#heading"
+#    http user@example.com:8080 user example.com 8080 /test test a=1&b=2 heading
+#
+# Example piping output to awk:
+#
+#    > parse-uri "http://example.com:8080/test" | awk -F '[ ]' '{print $4 ":" $5}'
+#    example.com:8080
+#
+
+# Following regex is based on https://tools.ietf.org/html/rfc3986#appendix-B
+readonly URI_REGEX='^(([^:/?#]+):)?(//((([^:/?#]+)@)?([^:/?#]+)(:([0-9]+))?))?(/([^?#]*))?(\?([^#]*))?(#(.*))?'
+#                    ↑↑            ↑  ↑↑↑            ↑         ↑ ↑             ↑ ↑            ↑  ↑        ↑ ↑
+#                    |2 scheme     |  ||6 userinfo   7 host    | 9 port        | 11 rpath     |  13 query | 15 fragment
+#                    1 scheme:     |  |5 userinfo@             8 :…            10 path        12 ?…       14 #…
+#                                  |  4 authority
+#                                  3 //…
+
+scheme=
+authority=
+user=
+host=
+port=
+path=
+rpath=
+query=
+fragment=
+
+parse_uri () {
+    if [[ "$@" =~ $URI_REGEX ]]; then
+        scheme=${BASH_REMATCH[2]}
+        authority=${BASH_REMATCH[4]}
+        user=${BASH_REMATCH[6]}
+        host=${BASH_REMATCH[7]}
+        port=${BASH_REMATCH[9]}
+        path=${BASH_REMATCH[10]}
+        rpath=${BASH_REMATCH[11]}
+        query=${BASH_REMATCH[13]}
+        fragment=${BASH_REMATCH[15]}
+
+        # If no meaningful group matched, then consider this invalid
+        if [[ -z $scheme && -z $authority && -z $user && -z $host && -z $port && -z $path && -z $rpath && -z $query && -z $fragment ]]; then
+            return 2
+        fi 
+
+        return 0
+    else
+        return 1
+    fi
+}
+
+if parse_uri $@; then
+    echo "${scheme} ${authority} ${user} ${host} ${port} ${path} ${rpath} ${query} ${fragment}"
+else
+    >&2 echo "Parsing failed. Is the input '$@' a valid URI?"
+    exit 1
+fi

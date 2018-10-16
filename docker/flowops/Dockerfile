@@ -58,4 +58,18 @@ FROM flowops-base
 RUN mkdir -p /usr/local/lib/python3.7/site-packages
 COPY --from=nipyapi-builder /install /usr/local/lib/python3.7/site-packages
 
+# Dependencies for scripts
+RUN mkdir /script-deps
+RUN wget https://raw.githubusercontent.com/eficode/wait-for/master/wait-for -O /script-deps/wait-for \
+    && chmod +x /script-deps/wait-for
+RUN wget https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh -O /script-deps/wait-for-it.sh \
+    && chmod +x /script-deps/wait-for-it.sh
+ENV PATH /script-deps:$PATH
+
+# FlowOps scripts
+ADD scripts /scripts
+ENV PATH /scripts:$PATH
+
+
+
 ENTRYPOINT ["/bin/bash"]

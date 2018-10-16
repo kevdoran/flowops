@@ -1,0 +1,66 @@
+#!/bin/bash
+
+#
+# This bash script will add a Registry client to NiFi after 
+# waiting for the NiFi REST API to become available.
+#
+# Usage:
+#    add-registry-to-nifi
+#
+# The following environment variables are also recognized:
+#    NIFI_URL       The URL of the NiFi instance, e.g., http://nifi:8080
+#    REGISTRY_URL   The URL of the Registry instance, e.g., http://registry:18080
+#    REGISTRY_NAME  The name of the Registry Client that is created in the NiFi instance
+#    DEBUG          Set to any non-zero length value to enable debug output. Unset to disable.
+#
+# Default values (in absence of arguments or environment variables):
+#    NiFi URL:      http://nifi:8080
+#    Registry URL:  http://registry:18080
+#    Registry Name: DockerRegistry
+#
+
+# Enable DEBUG output if enabled
+[ -n "$DEBUG" ] && set -x
+
+# NiFi Toolkit /bin dir expected to be on PATH
+toolkit_cli='cli.sh'
+
+# Look for Registry URL via the REGISTRY_URL env var, then fall back to default
+[[ -n "$REGISTRY_URL" ]] && registryUrl="$REGISTRY_URL"
+[[ -z "$registryUrl" ]] && registryUrl=http://registry:18080
+
+# Look for NiFi URL via the NIFI_URL env var, then fall back to default
+[[ -n "$NIFI_URL" ]] && nifiUrl="$NIFI_URL"
+[[ -z "$nifiUrl" ]] && nifiUrl=http://nifi:8080
+
+# Look for Registry Client Name via the REGISTRY_NAME env var, then fall back to default
+[[ -n "$REGISTRY_NAME" ]] && registryName="$REGISTRY_NAME"
+[[ -z "$registryName" ]] && registryName="DockerRegistry"
+
+# Wait for NiFi
+[ -n "$nifiUrl" ] && nifiHostPort=$(parse-uri ${nifiUrl} | awk -F '[ ]' '{print $4 ":" $5}')
+echo "Waiting for NiFi to listen on '${nifiHostPort}' to create Registry client"
+[ -n "$nifiHostPort" ] && wait-for-it.sh "$nifiHostPort" --timeout=0
+
+# Once NiFi is up, create registry client in NiFi
+if [ $? ]; then
+    echo "NiFi is up. Waiting a bit longer to ensure application is ready..."
+    sleep 5
+
+    echo "Using Toolkit CLI to check for existing Registry client named '${registryName}' in NiFi..."
+    existing_nifi_registry_client_id=$(${toolkit_cli} nifi list-reg-clients --baseUrl ${nifiUrl} -ot json | jq -r --arg NAME "$registryName" '.registries[] | select(.component.name==$NAME).id')
+
+    if [[ -z ${existing_nifi_registry_client_id} ]]; then
+        echo "No existing Registry client named '${registryName}' was found in NiFi."
+        echo "Using Toolkit CLI to create a Registry client in NiFi..."
+        cli_cmd="${toolkit_cli} nifi create-reg-client --baseUrl ${nifiUrl} --registryClientUrl ${registryUrl} --registryClientName ${registryName}"
+        echo "${cli_cmd}"
+        nifi_registry_client_id=$(${cli_cmd})
+        nifi_registry_client_id=$( echo "${nifi_registry_client_id}" | grep -v "JAVA_HOME" )
+        echo "Created registry client '${registryName}' with id=${nifi_registry_client_id}"
+    else
+        nifi_registry_client_id=$existing_nifi_registry_client_id
+        echo "Registry client '${registryName}' found with id=${nifi_registry_client_id}"
+    fi
+    export nifi_registry_client_id
+fi
