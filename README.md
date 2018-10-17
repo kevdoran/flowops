@@ -34,7 +34,7 @@ TODO, provide documentation for provided / built-in scripts.
 
 ### Apache NiFi & NiFi Registry
 
-This demo starts the FlowOps demo that connects Apache NiFi and NiFi Registry containers in a docker-compose environment. See the [docker-compose.yml](https://github.com/kevdoran/flowops/blob/master/docker/demo/nifi-registry/docker-compose.yml) file in this repo for details.
+This demo leverages FlowOps scripts to connect Apache NiFi and NiFi Registry containers in a docker-compose environment. See the [docker-compose.yml](https://github.com/kevdoran/flowops/blob/master/docker/demo/nifi-registry/docker-compose.yml) file in this repo for details.
 
 #### From master branch
 
