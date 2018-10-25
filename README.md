@@ -42,10 +42,10 @@ This demo leverages FlowOps scripts to connect Apache NiFi and NiFi Registry con
     
 #### From a stable release
 
-    FO_VERSION=0.1.0 \
-    && wget https://github.com/kevdoran/flowops/archive/v${FO_VERSION}.tar.gz -O flowops-${FO_VERSION}.tar.gz \
-    && tar -xzf flowops-${FO_VERSION}.tar.gz \
+    wget https://github.com/kevdoran/flowops/archive/v0.1.0.tar.gz -O flowops-0.1.0.tar.gz \
+    && tar -xzf flowops-0.1.0.tar.gz \
     && cd flowops-0.1.0/docker/demo/nifi-registry \
     && docker-compose up
 
-In the above example, replace `FO_VERSION=0.1.0` with the [release version](https://github.com/kevdoran/flowops/releases) you wish to use.
+The above example will run the demo using FlowOps v0.1.0. For other available versions, see the [releases](https://github.com/kevdoran/flowops/releases) page.
+
