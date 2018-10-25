@@ -1,0 +1,54 @@
+version: "3.5"
+
+services:
+
+  reverse-proxy:
+    image: traefik # The official Traefik docker image
+    command: --api --docker # Enables the web UI and tells Traefik to listen to docker
+    ports:
+      - "80:80"     # The HTTP port
+      - "8080:8080" # The Web UI (enabled by --api)
+    networks:
+      - demo
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # So that Traefik can listen to the Docker events
+
+  registry:
+    image: apache/nifi-registry:0.3.0
+    ports:
+      - "18080" # UI
+    networks:
+      - demo
+    labels:
+      traefik.frontend.rule: "Host:registry.docker.localhost"
+
+  nifi:
+    image: apache/nifi:1.7.1
+    ports:
+      - "8080" # UI
+      - "10000" # Site-to-Site Input Port
+    networks:
+      - demo
+    labels:
+      traefik.frontend.rule: "Host:nifi.docker.localhost"
+      traefik.frontend.headers.customRequestHeaders: "X-ProxyHost:nifi.docker.localhost||X-ProxyPort:80"
+
+  flowops:
+    image: kevdoran/flowops:0.1.0
+    networks:
+      - demo
+    environment:
+      - NIFI_URL=http://nifi:8080
+      - REGISTRY_URL=http://registry:18080
+      - REGISTRY_NAME=DockerRegistry
+      - REGISTRY_BUCKET_NAME=Default
+    command: [
+      # The entrypoint is /bin/bash, the -c flag treats the command string as parts rather than single string arg
+      -c, "create-registry-bucket && add-registry-to-nifi"
+    ]
+    depends_on:
+      - registry
+      - nifi
+
+networks:
+  demo: 
